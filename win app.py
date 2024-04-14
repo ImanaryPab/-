@@ -1,54 +1,84 @@
-import os
-import subprocess
-import pygame
-import tkinter as tk
-from tkinter import filedialog
-from PIL import Image, ImageTk
+import sys
+from PyQt5.QtWidgets import *
+from PyQt5.QtMultimedia import QMediaPlayer, QMediaContent
+from PyQt5.QtGui import QPixmap, QFont
+from PyQt5.QtCore import QUrl, Qt
 
-class MediaPlayer:
-    def __init__(self, master):
-        self.master = master
-        master.title("Медиа Плеер")
+class MediaPlayer(QMainWindow):
+    def __init__(self):
+        super().__init__()
+        self.setWindowTitle("Медиа Плеер")
+        self.setGeometry(100, 100, 800, 600)
+        self.setStyleSheet("background-color: black;")
 
-        pygame.init()
+        self.init_ui()
 
-        self.image_label = None
-        self.image = None
+    def init_ui(self):
+        main_widget = QWidget(self)
+        self.setCentralWidget(main_widget)
+        hbox = QHBoxLayout(main_widget)
 
-        self.play_audio_button = tk.Button(master, text="Воспроизвести аудио", command=self.play_audio, font=('Arial', 16), bg='lightblue', fg='black')
-        self.play_audio_button.pack(pady=10) 
+        self.play_audio_button = QPushButton("Аудио", self)
+        self.play_audio_button.clicked.connect(self.play_audio)
+        self.play_audio_button.setStyleSheet("background-color: white; border-radius: 25px;")
+        self.play_audio_button.setFont(QFont("Arial", 12))
+        hbox.addWidget(self.play_audio_button)
 
-        self.play_video_button = tk.Button(master, text="Воспроизвести видео", command=self.play_video, font=('Arial', 16), bg='lightgreen', fg='black')
-        self.play_video_button.pack(pady=10)
+        self.play_video_button = QPushButton("Видео", self)
+        self.play_video_button.clicked.connect(self.play_video)
+        self.play_video_button.setStyleSheet("background-color: white; border-radius: 25px;")
+        self.play_video_button.setFont(QFont("Arial", 12))
+        hbox.addWidget(self.play_video_button)
 
-        self.show_image_button = tk.Button(master, text="Показать изображение", command=self.show_image, font=('Arial', 16), bg='lightyellow', fg='black')
-        self.show_image_button.pack(pady=10)
+        self.play_image_button = QPushButton("Изображение", self)
+        self.play_image_button.clicked.connect(self.show_image)
+        self.play_image_button.setStyleSheet("background-color: white; border-radius: 25px;")
+        self.play_image_button.setFont(QFont("Arial", 12))
+        hbox.addWidget(self.play_image_button)
+
+        self.seek_slider = QSlider(Qt.Horizontal, self)
+        self.seek_slider.sliderMoved.connect(self.set_position)
+        self.seek_slider.hide()
+        hbox.addWidget(self.seek_slider)
+
+        self.image_label = QLabel(self)
+        self.image_label.setAlignment(Qt.AlignCenter)
+        hbox.addWidget(self.image_label)
+
+        self.player = QMediaPlayer()
+        self.player.positionChanged.connect(self.update_position)
 
     def play_audio(self):
-        audio_file = filedialog.askopenfilename(filetypes=[("Audio Files", "*.mp3")])
+        audio_file, _ = QFileDialog.getOpenFileName(self, "Выберите аудиофайл", "", "Audio Files (*.mp3)")
         if audio_file:
-            pygame.mixer.music.load(audio_file)
-            pygame.mixer.music.play()
+            self.player.setMedia(QMediaContent(QUrl.fromLocalFile(audio_file)))
+            self.player.play()
+            self.seek_slider.setMaximum(self.player.duration())
+            self.seek_slider.show()
 
     def play_video(self):
-        video_file = filedialog.askopenfilename(filetypes=[("Video Files", "*.mp4")])
+        video_file, _ = QFileDialog.getOpenFileName(self, "Выберите видеофайл", "", "Video Files (*.mp4 *.avi *.mov)")
         if video_file:
-            os.system(f"ffplay {video_file}")
+            self.player.setMedia(QMediaContent(QUrl.fromLocalFile(video_file)))
+            self.player.play()
+            self.seek_slider.setMaximum(self.player.duration())
+            self.seek_slider.show()
+
+    def set_position(self, position):
+        self.player.setPosition(position)
+        
+    def update_position(self, position):
+        self.seek_slider.setValue(position)
 
     def show_image(self):
-        image_file = filedialog.askopenfilename(filetypes=[("Image Files", "*.jpg;*.png")])
+        image_file, _ = QFileDialog.getOpenFileName(self, "Выберите изображение", "", "Image Files (*.jpg *.png)")
         if image_file:
-            if self.image_label:
-                self.image_label.destroy()  
+            pixmap = QPixmap(image_file)
+            self.image_label.setPixmap(pixmap)
 
-            self.image = Image.open(image_file)
-            self.image.thumbnail((400, 400))
-            photo = ImageTk.PhotoImage(self.image)
-            self.image_label = tk.Label(self.master, image=photo)
-            self.image_label.image = photo
-            self.image_label.pack()
 
 if __name__ == "__main__":
-    root = tk.Tk()
-    player = MediaPlayer(root)
-    root.mainloop()
+    app = QApplication(sys.argv)
+    player = MediaPlayer()
+    player.show()
+    sys.exit(app.exec_())
